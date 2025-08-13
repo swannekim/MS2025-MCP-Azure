@@ -1,5 +1,5 @@
 def main():
-    print("Hello from llm-integration!")
+    print("Hello from copilot-integration!")
 
 
 if __name__ == "__main__":
