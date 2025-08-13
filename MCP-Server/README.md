@@ -175,7 +175,6 @@ uv run mcp dev server-quickstart.py
 * 원하는 extension이 보이는 목록에 없다면 아래 저장소에서 수동 설치 가능
   * **Azure MCP Server**: [https://github.com/azure/azure-mcp](https://github.com/azure/azure-mcp)
   * **Azure AI Foundry MCP Server**: [https://github.com/azure-ai-foundry/mcp-foundry](https://github.com/azure-ai-foundry/mcp-foundry)
-       ![install page: MCP Servers for agent mode](../img/server-extension-page.png)
 
 3. 설치 완료 후 **설치된 MCP 서버 목록**에서 확인
   ![installed mcp servers](../img/server-extension-installed.png)
