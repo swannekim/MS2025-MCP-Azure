@@ -185,26 +185,29 @@ title: Advanced MCP Flow (Client-Server with LLM)
 ---
 sequenceDiagram
   autonumber
-  actor U as User
-  participant H as Host (UI)
-  participant C as MCP Client
-  participant M as LLM
-  participant S1 as MCP Server #1
-  participant S2 as MCP Server #2
+  actor User
+  participant Host as Host (UI)
+  participant Client as MCP Client
+  participant LLM as LLM
+  participant S1 as MCP Server 1
+  participant S2 as MCP Server 2
 
-  U->>H: 프롬프트 입력
-  H->>C: 요청 위임(권한/도구 설정)
-  C->>S1: 기능/리소스 목록 조회(Discovery)
-  C->>S2: 기능/리소스 목록 조회(Discovery)
-  H->>M: 프롬프트 + 도구 카탈로그
-  M-->>H: Tool call 계획
-  H->>C: 특정 Tool 실행 요청
-  C->>S1: Tool 실행(파라미터 검증)
-  S1-->>C: 구조화된 결과 반환
-  C-->>H: 결과 전달
-  H->>M: 추가 컨텍스트로 응답 생성
-  M-->>H: 최종 응답
-  H-->>U: 결과 표시
+  Note over Client,S2: (Startup) Feature Discovery
+  Client->>S1: features()
+  S1-->>Client: tools/resources
+  Client->>S2: features()
+  S2-->>Client: tools/resources
+
+  User->>Host: 프롬프트 입력
+  Host->>LLM: 프롬프트 + 도구 카탈로그
+  LLM-->>Host: Tool call 계획(툴명, 파라미터)
+  Host->>Client: 특정 Tool 실행 요청
+  Client->>S1: call(tool, params)
+  S1-->>Client: 구조화된 결과
+  Client-->>Host: 결과 전달
+  Host->>LLM: 결과를 컨텍스트로 전달
+  LLM-->>Host: 최종 응답
+  Host-->>User: 결과 표시
 ```
 
 ---
@@ -235,30 +238,31 @@ sequenceDiagram
 ---
 title: MCP on Azure - Reference Map
 ---
-graph LR
-  subgraph Client/Host
+flowchart LR
+  subgraph Client_Host[Client / Host]
     VS[VS Code / Copilot / IDE Host]
     Agent[Azure AI Foundry Agent]
   end
 
-  subgraph Azure Data/AI
+  subgraph Azure_Data_AI[Azure Data / AI]
     AISearch[Azure AI Search]
-    Storage[Azure Storage/Blob]
+    Storage[Azure Storage (Blob)]
     Cosmos[Azure Cosmos DB]
     AKS[AKS / Container Apps]
   end
 
-  subgraph Security & Ops
+  subgraph SecOps[Security & Ops]
     APIM[API Management (Gateway)]
     MI[Managed Identity]
     KV[Key Vault]
     CAS[Azure AI Content Safety]
-    Mon[Azure Monitor/Log Analytics]
+    Mon[Azure Monitor / Log Analytics]
   end
 
   VS -->|MCP| APIM
-  Agent -->|MCP (SSE/WS/STDIO)| APIM
+  Agent -->|MCP (SSE / WS / STDIO)| APIM
   APIM --> AKS
+
   AKS -->|MCP Server| AISearch
   AKS -->|MCP Server| Storage
   AKS -->|MCP Server| Cosmos
@@ -266,9 +270,10 @@ graph LR
   APIM --- MI
   AKS --- MI
   MI --- KV
+
   VS -. moderation .-> CAS
   Agent -. moderation .-> CAS
-  AKS -. logs/metrics .-> Mon
+  AKS -. logs / metrics .-> Mon
 ```
 
 * **Host/Client**: VS Code(확장), Copilot Agent Mode, Azure AI Foundry Agent
