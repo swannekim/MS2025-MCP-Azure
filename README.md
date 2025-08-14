@@ -239,41 +239,43 @@ sequenceDiagram
 title: MCP on Azure - Reference Map
 ---
 flowchart LR
-  subgraph Client_Host[Client / Host]
-    VS[VS Code / Copilot / IDE Host]
-    Agent[Azure AI Foundry Agent]
+  %% --- Nodes ---
+  subgraph Client_Host [Client and Host]
+    VS[VS Code / Copilot / IDE Host];
+    Agent[Azure AI Foundry Agent];
   end
 
-  subgraph Azure_Data_AI[Azure Data / AI]
-    AISearch[Azure AI Search]
-    Storage[Azure Storage (Blob)]
-    Cosmos[Azure Cosmos DB]
-    AKS[AKS / Container Apps]
+  subgraph Azure_Data_AI [Azure Data and AI]
+    AISearch[Azure AI Search];
+    Storage[Azure Storage Blob];
+    Cosmos[Azure Cosmos DB];
+    AKS[AKS or Container Apps];
   end
 
-  subgraph SecOps[Security & Ops]
-    APIM[API Management (Gateway)]
-    MI[Managed Identity]
-    KV[Key Vault]
-    CAS[Azure AI Content Safety]
-    Mon[Azure Monitor / Log Analytics]
+  subgraph SecOps [Security and Operations]
+    APIM[API Management Gateway];
+    MI[Managed Identity];
+    KV[Key Vault];
+    CAS[Azure AI Content Safety];
+    Mon[Azure Monitor and Log Analytics];
   end
 
-  VS -->|MCP| APIM
-  Agent -->|MCP (SSE / WS / STDIO)| APIM
-  APIM --> AKS
+  %% --- Edges ---
+  VS -->|MCP| APIM;
+  Agent -->|MCP| APIM;
+  APIM --> AKS;
 
-  AKS -->|MCP Server| AISearch
-  AKS -->|MCP Server| Storage
-  AKS -->|MCP Server| Cosmos
+  AKS -->|MCP Server| AISearch;
+  AKS -->|MCP Server| Storage;
+  AKS -->|MCP Server| Cosmos;
 
-  APIM --- MI
-  AKS --- MI
-  MI --- KV
+  APIM --- MI;
+  AKS --- MI;
+  MI --- KV;
 
-  VS -. moderation .-> CAS
-  Agent -. moderation .-> CAS
-  AKS -. logs / metrics .-> Mon
+  VS -.-> CAS;
+  Agent -.-> CAS;
+  AKS -.-> Mon;
 ```
 
 * **Host/Client**: VS Code(확장), Copilot Agent Mode, Azure AI Foundry Agent
