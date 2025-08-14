@@ -54,3 +54,4 @@ uv add "mcp[cli]"
 ## 참고
 
 * 사전 요구사항: Python 설치 및 `uv` 사용 가능 환경 (Python 3.10+)
+* 가상환경 비활성화는 `deactivate`
