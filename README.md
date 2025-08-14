@@ -34,8 +34,6 @@ uv add "mcp[cli]"
 
 ## 2. 기존 폴더에서 시작할 때
 
-이미 저장소에 폴더가 있다면, 해당 폴더로 이동 후 3번부터 진행하세요.
-
 ```bash
 cd <EXISTING_FOLDER_NAME>
 uv venv
