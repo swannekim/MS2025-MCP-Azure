@@ -10,8 +10,11 @@ import functools
 import inspect
 from dataclasses import dataclass
 from typing import Optional, List
+import json
 
 import jwt
+from jwt.algorithms import RSAAlgorithm
+from jwt import decode as jwt_decode, PyJWKClient, get_unverified_header
 import httpx
 from starlette.applications import Starlette
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -32,18 +35,31 @@ AUTH_MODE = os.getenv("AUTH_MODE", "api-key").lower()
 API_KEY = os.getenv("API_KEY", "")
 DEFAULT_ROLES = [r.strip() for r in os.getenv("DEFAULT_ROLES", "user").split(",") if r.strip()]
 
-TENANT_ID = os.getenv("AAD_TENANT_ID", "")
+TENANT_ID = os.getenv("TENANT_ID", "")
 AAD_AUDIENCE = os.getenv("AAD_AUDIENCE", "")
 AAD_ISSUER = os.getenv("AAD_ISSUER", f"https://login.microsoftonline.com/{TENANT_ID}/v2.0")
 
-CS_ENDPOINT = os.getenv("CONTENT_SAFETY_ENDPOINT", "").rstrip("/")
-CS_KEY = os.getenv("CONTENT_SAFETY_KEY", "")
-CS_API_VERSION = os.getenv("CONTENT_SAFETY_API_VERSION", "")  # per docs
+CS_ENDPOINT = os.getenv("CS_ENDPOINT", "").rstrip("/")
+CS_KEY = os.getenv("CS_KEY", "")
+CS_API_VERSION = os.getenv("CS_API_VERSION", "")  # per docs
 
 PORT = int(os.getenv("PORT", "8000"))
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("mcp-secure")
+
+# === helpers: stdio 감지 ===
+def _is_stdio() -> bool:
+    return os.getenv("MCP_TRANSPORT", "stdio").lower() == "stdio"
+
+def _safe_client_id(ctx: Context) -> str:
+    cid = getattr(ctx, "client_id", None)
+    if not cid:
+        cid = getattr(getattr(ctx, "session", None), "client_id", None)
+    if not cid:
+        cid = f"stdio-{os.getpid()}"
+    return cid
+
 
 # ----------------------------
 # Principal & 컨텍스트 보관
@@ -58,7 +74,11 @@ _current_principal: contextvars.ContextVar[Principal | None] = contextvars.Conte
 )
 
 def get_principal() -> Principal | None:
-    return _current_principal.get()
+    p = _current_principal.get()
+    if p is None and _is_stdio():
+        # stdio 경로는 HTTP 미들웨어를 안 타므로, 기본 롤로 가짜 주체 부여
+        return Principal(sub="stdio-user", roles=DEFAULT_ROLES or ["user"])
+    return p
 
 # ----------------------------
 # AAD(JWT) 검증 유틸
@@ -90,26 +110,51 @@ async def _get_jwks(client: httpx.AsyncClient) -> dict:
     _jwks_cache_exp = now + 3600
     return jwks
 
-async def validate_jwt(token: str, client: httpx.AsyncClient) -> dict:
-    header = jwt.get_unverified_header(token)
-    jwks = await _get_jwks(client)
-    key = None
-    for k in jwks.get("keys", []):
-        if k.get("kid") == header.get("kid"):
-            key = jwt.algorithms.RSAAlgorithm.from_jwk(json.dumps(k))
-            break
-    if not key:
-        raise ValueError("JWK not found")
+from jwt import decode as jwt_decode, PyJWKClient, get_unverified_header
 
-    claims = jwt.decode(
+async def validate_jwt(token: str, client: httpx.AsyncClient) -> dict:
+    # OIDC에서 jwks_uri만 비동기로 가져오기
+    resp = await client.get(
+        f"https://login.microsoftonline.com/{TENANT_ID}/v2.0/.well-known/openid-configuration",
+        timeout=10,
+    )
+    resp.raise_for_status()
+    jwks_uri = resp.json()["jwks_uri"]
+
+    jwk_client = PyJWKClient(jwks_uri)
+    signing_key = await asyncio.to_thread(jwk_client.get_signing_key_from_jwt, token)
+
+    claims = jwt_decode(
         token,
-        key=key,
+        key=signing_key.key, # PublicKey 타입으로 보장
         algorithms=["RS256"],
         audience=AAD_AUDIENCE,
         issuer=AAD_ISSUER,
         options={"require": ["exp", "iat", "iss", "aud"]},
     )
     return claims
+
+# async def validate_jwt(token: str, client: httpx.AsyncClient) -> dict:
+#     header = jwt.get_unverified_header(token)
+#     jwks = await _get_jwks(client)
+#     key = None
+#     for k in jwks.get("keys", []):
+#         if k.get("kid") == header.get("kid"):
+#             key = RSAAlgorithm.from_jwk(json.dumps(k))
+#             break
+
+#     if not key:
+#         raise ValueError("JWK not found")
+
+#     claims = jwt.decode(
+#         token,
+#         key=key,
+#         algorithms=["RS256"],
+#         audience=AAD_AUDIENCE,
+#         issuer=AAD_ISSUER,
+#         options={"require": ["exp", "iat", "iss", "aud"]},
+#     )
+#     return claims
 
 # ----------------------------
 # Prompt Shields 연동
@@ -138,29 +183,57 @@ async def is_prompt_attack(user_prompt: str, documents: list[str] | None) -> boo
 def require_roles(allowed: list[str]):
     allowed_set = set(allowed)
 
-    def deco(fn):
-        sig = inspect.signature(fn)  # ← 원본 시그니처 보관
+    def deco(fn: t.Callable[..., t.Any]) -> t.Callable[..., t.Any]:
+        original_sig = inspect.signature(fn)
 
         if asyncio.iscoroutinefunction(fn):
             @functools.wraps(fn)
-            async def _async_wrapped(*args, **kwargs):
+            async def _async_wrapped(*args: t.Any, **kwargs: t.Any):
                 p = get_principal()
                 if p is None or not (set(p.roles) & allowed_set):
                     raise PermissionError("Forbidden by RBAC")
                 return await fn(*args, **kwargs)
-            _async_wrapped.__signature__ = sig   # ← 시그니처 복원
-            return _async_wrapped
+            # Pylance가 __signature__ 타입을 모른다고 경고하므로 setattr 사용
+            setattr(_async_wrapped, "__signature__", original_sig)  # type: ignore[attr-defined]
+            return _async_wrapped  # type: ignore[return-value]
 
         @functools.wraps(fn)
-        def _sync_wrapped(*args, **kwargs):
+        def _sync_wrapped(*args: t.Any, **kwargs: t.Any):
             p = get_principal()
             if p is None or not (set(p.roles) & allowed_set):
                 raise PermissionError("Forbidden by RBAC")
             return fn(*args, **kwargs)
-        _sync_wrapped.__signature__ = sig       # ← 시그니처 복원
-        return _sync_wrapped
+        setattr(_sync_wrapped, "__signature__", original_sig)  # type: ignore[attr-defined]
+        return _sync_wrapped  # type: ignore[return-value]
 
     return deco
+
+# def require_roles(allowed: list[str]):
+#     allowed_set = set(allowed)
+
+#     def deco(fn):
+#         sig = inspect.signature(fn)  # ← 원본 시그니처 보관
+
+#         if asyncio.iscoroutinefunction(fn):
+#             @functools.wraps(fn)
+#             async def _async_wrapped(*args, **kwargs):
+#                 p = get_principal()
+#                 if p is None or not (set(p.roles) & allowed_set):
+#                     raise PermissionError("Forbidden by RBAC")
+#                 return await fn(*args, **kwargs)
+#             _async_wrapped.__signature__ = sig   # ← 시그니처 복원
+#             return _async_wrapped
+
+#         @functools.wraps(fn)
+#         def _sync_wrapped(*args, **kwargs):
+#             p = get_principal()
+#             if p is None or not (set(p.roles) & allowed_set):
+#                 raise PermissionError("Forbidden by RBAC")
+#             return fn(*args, **kwargs)
+#         _sync_wrapped.__signature__ = sig       # ← 시그니처 복원
+#         return _sync_wrapped
+
+#     return deco
 
 # def require_roles(allowed: list[str]):
 #     """요구 역할이 하나라도 일치해야 통과."""
@@ -196,8 +269,10 @@ def whoami(ctx: Context) -> dict:
     """현재 인증 주체와 역할을 반환합니다."""
     p = get_principal()
     return {
-        "client_id": ctx.client_id,
+        "client_id": _safe_client_id(ctx),
+        "transport": "stdio" if _is_stdio() else "http",
         "principal": None if not p else {"sub": p.sub, "roles": p.roles},
+        "effective_roles": [] if not p else p.roles,
     }
 
 @mcp.tool(title="Safe Summarize")
@@ -216,6 +291,7 @@ async def summarize(text: str, ctx: Context, documents: Optional[List[str]] | No
     # 데모: 매우 단순한 요약
     return text[:200] + ("..." if len(text) > 200 else "")
 
+# 데코레이터 순서 주의: 역할 검증을 먼저 적용하고, 그 다음 MCP에 등록
 @require_roles(["admin"])
 @mcp.tool(title="Admin Echo")
 def admin_echo(message: str, ctx: Context) -> str:
@@ -287,4 +363,10 @@ app = mcp_app
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("server:app", host="0.0.0.0", port=PORT, reload=True)
+    transport = os.getenv("MCP_TRANSPORT", "stdio").lower()
+    if transport == "stdio":
+        # ✅ Copilot Chat/VS Code MCP가 요구하는 stdio 서버 실행
+        mcp.run()  # FastMCP가 제공 (stdin/stdout)
+    else:
+        # 여전히 HTTP로도 띄울 수 있게 유지
+        uvicorn.run("server:app", host="0.0.0.0", port=PORT, reload=True)
