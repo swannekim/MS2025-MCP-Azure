@@ -19,7 +19,7 @@
   - [Azure AI Foundry MCP GitHub Repo](https://github.com/azure-ai-foundry/mcp-foundry)
 > ⚠️ Copilot의 MCP 활성 Tool 수는 128개 이하로 유지하세요. 불필요한 서버/툴은 끄거나 선택 해제합니다.
 -  **Python 3.10+** 및 [uv](https://github.com/astral-sh/uv) (권장)
-* Azure 구독 & Azure AI Foundry 워크스페이스
+- Azure 구독 & Azure AI Foundry 워크스페이스
 
 ---
 
@@ -340,11 +340,3 @@ curl -i http://localhost:8000/health   # 200 OK
   → MCP 패널에서 **불필요 서버/툴 OFF**, **≤ 128개** 유지
 * **CORS/HTTPS/레이트리밋**
   → 실제 배포 시 **APIM/Ingress** 앞단에서 정책/TLS/레이트리밋 구성
-
----
-
-### ➕ Next Steps for Security (Optional)
-
-* **APIM + API Center**로 MCP 엔드포인트 **정책·키 관리·감사 중앙화**
-* **Entra ID(OAuth 2.1/PKCE)** 전환, **audience** 분리로 토큰 패스스루 금지
-* **A2A 연동**: 보안된 MCP 서버들을 에이전트-투-에이전트 플로우로 연결해 **도메인 작업 자동화** 시나리오 구성

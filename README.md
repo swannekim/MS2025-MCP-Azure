@@ -1,6 +1,3 @@
-# MS2025-MCP-Azure
-MCP with MS Azure: MS CAIP intern
-
 # Repository Quickstart (Per-Folder Template)
 
 이 저장소는 **각 폴더마다 독립적인 uv 기반 Python 프로젝트**로 구성됩니다.
