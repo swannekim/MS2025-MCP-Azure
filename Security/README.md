@@ -15,39 +15,38 @@ MCP(Model Context Protocol)는 에이전틱 애플리케이션에서 **도구와
 
 ## Overview
 
-해당 사례에서는 **REST API 엔드포인트를 MCP 서버로 노출**해, 에이전트 앱에서 바로 사용할 수 있도록 하면서 APIM의 기능(보안/정책/관측성)을 함께 활용하는 방법을 다룹니다. ([learn.microsoft.com][6])
+해당 사례에서는 **REST API 엔드포인트를 MCP 서버로 노출**해, 에이전트 앱에서 바로 사용할 수 있도록 하면서 APIM의 기능(보안/정책/관측성)을 함께 활용하는 방법을 다룹니다.
 
 ## Key Features
 
-* MCP **툴로 노출할 HTTP 메서드/오퍼레이션**을 선택적으로 지정. ([learn.microsoft.com][6])
+* MCP **툴로 노출할 HTTP 메서드/오퍼레이션**을 선택적으로 지정.
 * 부가 기능은 APIM **정책(Policy)** 구성에 따라 달라지며, 예시로 **rate limiting 정책** 적용을 보여줍니다. ([learn.microsoft.com][2])
 
 ---
 
 ## 사전 단계: API 가져오기(Import)
 
-이미 APIM에 API가 있다면 이 단계를 건너뜁니다. 없다면 **OpenAPI/URL/리소스**에서 API를 가져오는 방법을 참고하세요. ([learn.microsoft.com][7])
+> 이미 APIM에 API가 있다면 이 단계를 건너뜁니다. 없다면 **OpenAPI/URL/리소스**에서 API를 가져오는 방법을 참고하세요. [MS Learn Tutorial: Import and publish your first API](https://learn.microsoft.com/en-us/azure/api-management/import-and-publish)
 
 ---
 
 ## REST API를 MCP 서버로 노출하기
+> 자세한 내용은 [MS Learn: Expose REST API in API Management as an MCP server](https://learn.microsoft.com/en-us/azure/api-management/export-rest-mcp-server)에 제시되어 있습니다.
 
 1. **Azure Portal** 접속 → APIM 인스턴스로 이동
-   (빠른 진입 링크: `<https://portal.azure.com/?Microsoft_Azure_ApiManagement=mcp>`). ([learn.microsoft.com][6])
+   (빠른 진입 링크: `<https://portal.azure.com/?Microsoft_Azure_ApiManagement=mcp>`).
 
-2. 좌측 메뉴 **APIs > MCP Servers > + Create new MCP Server** 선택. ([learn.microsoft.com][6])
+2. 좌측 메뉴 **APIs > MCP Servers > + Create new MCP Server** 선택.
 
-3. **API** 섹션에서 MCP 서버로 노출할 **REST API** 선택. ([learn.microsoft.com][6])
+3. **API** 섹션에서 MCP 서버로 노출할 **REST API** 선택.
 
 4. MCP **툴로 노출할 오퍼레이션**(엔드포인트)을 1개 이상 선택(전부 or 일부).
-   *이미지: Select methods to expose* ([learn.microsoft.com][6])
 
-5. **Create** 클릭. ([learn.microsoft.com][6])
+5. **Create** 클릭.
 
 6. **APIs > MCP Servers**로 이동하면, 생성된 MCP 서버 목록과 **엔드포인트 URL**을 확인할 수 있습니다(테스트/클라이언트에서 호출).
-   *이미지: MCP server list* ([learn.microsoft.com][6])
 
-> 🔎 **전송(Transport) 참고:** VS Code 등 MCP 클라이언트는 **SSE** 또는 **Streamable HTTP**를 지원합니다. APIM 문서의 MCP 서버 기능은 최신 **Streamable HTTP**를 기본으로 안내하며, 문서의 예시 URL은 `/sse`(SSE) 또는 `/mcp`(HTTP)처럼 구분됩니다. 실 환경에서는 클라이언트/서버가 동일 전송을 지원하는지 확인하세요. ([learn.microsoft.com][6])
+> 🔎 **전송(Transport) 참고:** VS Code 등 MCP 클라이언트는 **SSE** 또는 **Streamable HTTP**를 지원합니다. APIM 문서의 MCP 서버 기능은 최신 **Streamable HTTP**를 기본으로 안내하며, 문서의 예시 URL은 `/sse`(SSE) 또는 `/mcp`(HTTP)처럼 구분됩니다. 실 환경에서는 클라이언트/서버가 동일 전송을 지원하는지 확인하세요.
 
 ---
 
@@ -64,7 +63,6 @@ APIM 정책은 XML로 작성하며, **요청 제한(rate limit)**, **시맨틱 �
 ```
 
 정책 편집 경로: **APIs > MCP Servers > (대상 서버) > Policies** 에서 XML 편집.
-*이미지: Policy editor* ([learn.microsoft.com][6])
 
 > ⚠️ **스트리밍 주의:** MCP는 스트리밍이 핵심입니다. MCP 서버 정책에서 `context.Response.Body`에 접근하면 **버퍼링이 발생**해 스트리밍이 깨질 수 있으니 피하세요. 또한 App Insights/진단 로깅에서 **응답 바이트 로깅을 0**으로 두는 등, 페이로드 로깅으로 스트림이 방해받지 않도록 설정하세요. ([learn.microsoft.com][8])
 
@@ -79,7 +77,7 @@ VS Code에서 MCP 서버를 등록하여 **에이전트 모드**로 툴을 호�
 3. APIM에 표시된 MCP URL 입력(예):
 
    * SSE: `https://<apim>.azure-api.net/<api-name>-mcp/sse`
-   * HTTP: `https://<apim>.azure-api.net/<api-name>-mcp/mcp` ([learn.microsoft.com][6])
+   * HTTP: `https://<apim>.azure-api.net/<api-name>-mcp/mcp`
 4. 임의의 **Server ID** 지정. 저장 위치는 **Workspace(.vscode/mcp.json)** 또는 **User settings** 중 선택. ([code.visualstudio.com][9])
 
 **Workspace 설정 예(.vscode/mcp.json):**
@@ -176,8 +174,6 @@ VS Code에서 MCP 서버를 등록하여 **에이전트 모드**로 툴을 호�
 ---
 
 ## References
-
-* **Expose REST API as MCP server** (공식 Learn) ([learn.microsoft.com][6])
 * **MCP 서버 개요 / 보안 액세스** (공식 Learn) ([learn.microsoft.com][3])
 * **기존 MCP 서버 노출 및 정책 주의사항** (공식 Learn) ([learn.microsoft.com][8])
 * **AI 게이트웨이 기능(시맨틱 캐싱/토큰 제어)** (공식 Learn) ([learn.microsoft.com][4])
@@ -195,7 +191,7 @@ VS Code에서 MCP 서버를 등록하여 **에이전트 모드**로 툴을 호�
 
 > 💡 **실습 팁 요약**
 >
-> * 먼저 APIM에 API를 가져오고, 필요한 오퍼레이션만 **툴로 노출**합니다. ([learn.microsoft.com][7])
+> * 먼저 APIM에 API를 가져오고, 필요한 오퍼레이션만 **툴로 노출**합니다.
 > * **Named Values + Key Vault**로 시크릿을 관리하고, 인바운드에서 구독 키를 검증 후 **백엔드로는 제거**합니다. ([learn.microsoft.com][15])
 > * **rate-limit-by-key**로 클라이언트 IP/토큰/구독 단위 제한을 적용하고, 필요 시 **시맨틱 캐싱/토큰 정책**을 조합합니다. ([learn.microsoft.com][2])
 > * VS Code \*\*`MCP: Add Server`\*\*로 서버 등록 후, **툴 패널**에서 바로 호출/검증합니다. ([code.visualstudio.com][9])
