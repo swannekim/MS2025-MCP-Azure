@@ -12,7 +12,7 @@
 ## ✅ Prerequisites
 - VS Code 최신 버전
 - GitHub Copilot Chat 사용 가능 계정 (Agent 모드 지원)
-- VS Code의 MCP 구성 사용 환경 (설정은 아래 단계에서 안내
+- VS Code의 MCP 구성 사용 환경 (설정은 아래 단계에서 안내)
 - Playwright / Azure / Azure AI Foundry MCP 서버 설치
   - 설치는 각 리포지토리의 README를 따르거나, VS Code MCP 설정 화면의 Install 버튼을 이용해도 됩니다.
   - [Azure MCP GitHub Repo](https://github.com/Azure/azure-mcp)
