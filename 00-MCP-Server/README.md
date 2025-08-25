@@ -1,4 +1,4 @@
-# Step 1. What is MCP Server?
+# What is MCP Server?
 
 ---
 
@@ -8,36 +8,6 @@
 * `mcp[cli]` 설치 후 **FastMCP** 서버 실행
 * **MCP Inspector**에서 `Resources / Prompts / Tools` 상호작용
 * **VS Code MCP Servers for agent mode** 확장 설치 및 서버 확인 (Azure, Azure AI Foundry 포함)
-
----
-
-## 🧰 Pre-requisites
-
-* **Python 3.10+** (권장: 최신 안정 버전; 본 실습은 **3.13.5**에서 검증)
-
-  > 공식 MCP 가이드는 **Python 3.10 이상**을 요구합니다. 또한 `mcp[cli]` 종속성 해석 시 **3.10 미만**에서는 의존성 충돌이 발생할 수 있습니다.
-* **uv** (Python 프로젝트/venv/의존성 관리 도구)
-* **VS Code** (권장) + 인터넷 연결
-* OS: Windows 10/11 (예시 명령은 **Git Bash** 기준)
-
----
-
-## 🚀 Quickstart
-
-```bash
-# 1) 프로젝트 생성
-uv init MCP-Server
-
-# 2) 경로 이동
-cd MCP-Server
-
-# 3) 가상환경 생성 및 활성화
-uv venv
-source .venv/Scripts/activate   # Git Bash 기준. PowerShell은 .\.venv\Scripts\Activate.ps1
-
-# 4) MCP CLI 포함 설치
-uv add "mcp[cli]"
-```
 
 ---
 
@@ -86,6 +56,7 @@ def greet_user(name: str, style: str = "friendly") -> str:
 ```
 
 ### 2. Add tool
+* 해당 도구를 통해 `run mcp dev` 인스펙터에서 `tools/list`로 자동 발견되고 `tools/call`로 즉시 호출·검증할 수 있는 최소 실행 예제를 제공해, Host↔Server 연결·파라미터 스키마 검증·실행 결과 흐름을 빠르게 확인할 수 있습니다.
 
 ```python
 # ========== OPTIONAL ==========
@@ -120,7 +91,8 @@ uv run mcp dev server-quickstart.py
 ![connected page of mcp inspector](../img/inspector-connect-page.png)
 
 3. **Resources 탭**
-![resources tab](../img/inspector-resources-tab.png)
+  * MCP 서버가 **URI 기반 데이터/컨텍스트**를 `resources/list`·`resources/read`로 제공하는 읽기 인터페이스입니다.
+  ![resources tab](../img/inspector-resources-tab.png)
   * *Resource Templates* → `get_greeting` 선택
   * `name` 입력(예: `Sage`) → **Fetch** 후 응답 확인
   * 기대 응답 예시:
@@ -138,13 +110,14 @@ uv run mcp dev server-quickstart.py
     ![resources tab with greetings](../img/inspector-resources-greeting.png)
 
 4. **Prompts 탭**
-![prompts tab](../img/inspector-prompts-tab.png)
+  * **변수 치환 가능한 프롬프트 템플릿**을 `prompts/list`·`prompts/get`으로 조회하는 인터페이스입니다.
+  ![prompts tab](../img/inspector-prompts-tab.png)
   * *List Prompts* → `greet_user` 선택
   * `name/style` 입력(예: `Sage` / `casual`) → **Get Prompt**로 프롬프트 템플릿 미리보기
   ![prompts tab with greeting template](../img/inspector-prompts-greeting.png)
 
 5. **Tools 탭**
-
+  * JSON Schema 기반 파라미터 검증을 거친 **실행 함수(API)**를 `tools/list`·`tools/call`로 호출하는 인터페이스입니다.
   * *List Tools* → `add` 선택 → `a=17, b=98` → **Run Tool**
     * 기대 결과: `{"result": 115}`
   * *List Tools* → `generate_greeting` → `name=Sage, style=casual` → **Run Tool**
@@ -165,16 +138,16 @@ uv run mcp dev server-quickstart.py
 
 ---
 
-## 🧩 VS Code에서 MCP Server 확장 설치
+## ⚙️ VS Code에서 MCP Server 확장 설치
 
 1. **Extensions** 사이드바에서 `@mcp` 검색 → **Browse MCP Servers** 클릭
-![extensions tab for mcp servers](../img/server-extension-check.png)
+  ![extensions tab for mcp servers](../img/server-extension-check.png)
 
 2. **MCP Servers for agent mode** 페이지에서 원하는 서버 설치
-![install page: MCP Servers for agent mode](../img/server-extension-page.png)
-* 원하는 extension이 보이는 목록에 없다면 아래 저장소에서 수동 설치 가능
-  * **Azure MCP Server**: [https://github.com/azure/azure-mcp](https://github.com/azure/azure-mcp)
-  * **Azure AI Foundry MCP Server**: [https://github.com/azure-ai-foundry/mcp-foundry](https://github.com/azure-ai-foundry/mcp-foundry)
+  ![install page: MCP Servers for agent mode](../img/server-extension-page.png)
+  * 원하는 extension이 보이는 목록에 없다면 아래 저장소에서 수동 설치 가능
+    * **Azure MCP Server**: [https://github.com/azure/azure-mcp](https://github.com/azure/azure-mcp)
+    * **Azure AI Foundry MCP Server**: [https://github.com/azure-ai-foundry/mcp-foundry](https://github.com/azure-ai-foundry/mcp-foundry)
 
 3. 설치 완료 후 **설치된 MCP 서버 목록**에서 확인
   ![installed mcp servers](../img/server-extension-installed.png)

@@ -1,4 +1,4 @@
-# MCP로 구축하는 에이전트-투-에이전트(Agent-to-Agent) 통신 시스템
+# MCP로 구축하는 Agent-to-Agent 통신 시스템
 
 > 해당 폴더의 내용 및 파일은 [Microsoft Dev Blogs](https://devblogs.microsoft.com/blog/can-you-build-agent2agent-communication-on-mcp-yes)를 참조하여 작성되었습니다.
 

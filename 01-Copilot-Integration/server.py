@@ -1,7 +1,6 @@
 # server.py
 import os
 import time
-import json
 import logging
 import contextvars
 import asyncio
@@ -14,7 +13,9 @@ import json
 
 import jwt
 from jwt.algorithms import RSAAlgorithm
-from jwt import decode as jwt_decode, PyJWKClient, get_unverified_header
+from jwt import decode as jwt_decode
+from jwt import PyJWKClient, get_unverified_header
+
 import httpx
 from starlette.applications import Starlette
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -83,50 +84,89 @@ def get_principal() -> Principal | None:
 # ----------------------------
 # AAD(JWT) 검증 유틸
 # ----------------------------
-_jwks_cache: dict[str, t.Any] = {}
-_jwks_cache_exp: float = 0
 
-async def _get_jwks(client: httpx.AsyncClient) -> dict:
-    """OIDC 설정에서 JWKS를 가져오고 캐시합니다."""
+# 캐시 (초 단위 만료)
+_jwks_cache: dict = {}
+_jwks_cache_exp: float = 0
+# JSON Web Key Set: 각 키는 JWK라 불리며 kid(키 ID)를 가짐. 토큰 헤더의 kid와 매칭해서 서명 검증에 씀.
+_oidc_cache: dict = {}
+_oidc_cache_exp: float = 0
+# OpenID Connect: 발급자(issuer)의 토큰을 검증하려면 뭘 알아야 하는지를 한 문서에 담아둔 설정표.
+
+# OIDC 디스커버리 문서를 가져와 캐시. 여기서 jwks_uri를 뽑음.
+async def _get_oidc(client: httpx.AsyncClient, *, force: bool = False) -> dict:
+    """OpenID Configuration을 캐시하여 반환."""
+    global _oidc_cache, _oidc_cache_exp
+    now = time.time()
+    if not force and now < _oidc_cache_exp and _oidc_cache:
+        return _oidc_cache
+
+    resp = await client.get(
+        f"https://login.microsoftonline.com/{TENANT_ID}/v2.0/.well-known/openid-configuration",
+        timeout=10,
+    )
+    resp.raise_for_status()
+    _oidc_cache = resp.json()
+    _oidc_cache_exp = now + 3600
+    return _oidc_cache
+
+# jwks_uri로부터 JWKS(공개키 세트)를 가져와 캐시.
+async def _get_jwks(client: httpx.AsyncClient, *, force: bool = False) -> dict:
+    """JWKS(JSON Web Key Set)를 캐시하여 반환."""
     global _jwks_cache, _jwks_cache_exp
     now = time.time()
-    if now < _jwks_cache_exp and _jwks_cache:
+    if not force and now < _jwks_cache_exp and _jwks_cache:
         return _jwks_cache
 
-    # OpenID configuration → jwks_uri
-    resp = await client.get(
-        f"https://login.microsoftonline.com/{TENANT_ID}/v2.0/.well-known/openid-configuration",
-        timeout=10,
-    )
-    resp.raise_for_status()
-    oidc = resp.json()
+    oidc = await _get_oidc(client, force=force)
     jwks_uri = oidc["jwks_uri"]
 
-    r2 = await client.get(jwks_uri, timeout=10)
-    r2.raise_for_status()
-    jwks = r2.json()
-
-    _jwks_cache = jwks
+    r = await client.get(jwks_uri, timeout=10)
+    r.raise_for_status()
+    _jwks_cache = r.json()
     _jwks_cache_exp = now + 3600
-    return jwks
+    return _jwks_cache
 
-from jwt import decode as jwt_decode, PyJWKClient, get_unverified_header
+# 토큰의 kid에 맞는 JWK(공개키)를 고른 다음 서명을 검증
+def _find_jwk(jwks: dict, kid: Optional[str]) -> Optional[dict]:
+    """토큰 헤더의 kid와 일치하는 JWK를 찾는다."""
+    if not kid:
+        return None
+    for k in jwks.get("keys", []):
+        if k.get("kid") == kid:
+            return k
+    return None
 
+# 클레임 검사(iss/aud/exp/iat 등)로 우리 서비스용이고, 유효 기간 안이고, 올바른 발급자인지 확인
 async def validate_jwt(token: str, client: httpx.AsyncClient) -> dict:
-    # OIDC에서 jwks_uri만 비동기로 가져오기
-    resp = await client.get(
-        f"https://login.microsoftonline.com/{TENANT_ID}/v2.0/.well-known/openid-configuration",
-        timeout=10,
-    )
-    resp.raise_for_status()
-    jwks_uri = resp.json()["jwks_uri"]
+    """
+    JWKS 캐시를 사용해 AAD 토큰을 검증.
+    - 키 회전(kid 변경) 시 JWKS를 강제 갱신해 재시도.
+    - RS256 고정, 필수 클레임(exp/iat/iss/aud) 요구.
+    """
+    header = get_unverified_header(token)
+    alg = header.get("alg")
+    kid = header.get("kid")
 
-    jwk_client = PyJWKClient(jwks_uri)
-    signing_key = await asyncio.to_thread(jwk_client.get_signing_key_from_jwt, token)
+    if alg and alg != "RS256":
+        raise ValueError(f"Unsupported alg: {alg}")
+
+    # 1차: 캐시된 JWKS에서 키 탐색
+    jwks = await _get_jwks(client, force=False)
+    jwk = _find_jwk(jwks, kid)
+
+    # 2차: 못 찾으면 강제 갱신 후 재시도
+    if jwk is None:
+        jwks = await _get_jwks(client, force=True)
+        jwk = _find_jwk(jwks, kid)
+        if jwk is None:
+            raise ValueError("Signing key not found for the given kid")
+
+    public_key = RSAAlgorithm.from_jwk(json.dumps(jwk))
 
     claims = jwt_decode(
         token,
-        key=signing_key.key, # PublicKey 타입으로 보장
+        key=public_key,
         algorithms=["RS256"],
         audience=AAD_AUDIENCE,
         issuer=AAD_ISSUER,
@@ -134,21 +174,52 @@ async def validate_jwt(token: str, client: httpx.AsyncClient) -> dict:
     )
     return claims
 
+# _jwks_cache: dict[str, t.Any] = {}
+# _jwks_cache_exp: float = 0
+# _oidc_cache: dict[str, t.Any] = {}
+# _oidc_cache_exp: float = 0
+
+# async def _get_jwks(client: httpx.AsyncClient) -> dict:
+#     """OIDC 설정에서 JWKS를 가져오고 캐시합니다."""
+#     global _jwks_cache, _jwks_cache_exp
+#     now = time.time()
+#     if now < _jwks_cache_exp and _jwks_cache:
+#         return _jwks_cache
+
+#     # OpenID configuration → jwks_uri
+#     resp = await client.get(
+#         f"https://login.microsoftonline.com/{TENANT_ID}/v2.0/.well-known/openid-configuration",
+#         timeout=10,
+#     )
+#     resp.raise_for_status()
+#     oidc = resp.json()
+#     jwks_uri = oidc["jwks_uri"]
+
+#     r2 = await client.get(jwks_uri, timeout=10)
+#     r2.raise_for_status()
+#     jwks = r2.json()
+
+#     _jwks_cache = jwks
+#     _jwks_cache_exp = now + 3600
+#     return jwks
+
+# from jwt import decode as jwt_decode, PyJWKClient, get_unverified_header
+
 # async def validate_jwt(token: str, client: httpx.AsyncClient) -> dict:
-#     header = jwt.get_unverified_header(token)
-#     jwks = await _get_jwks(client)
-#     key = None
-#     for k in jwks.get("keys", []):
-#         if k.get("kid") == header.get("kid"):
-#             key = RSAAlgorithm.from_jwk(json.dumps(k))
-#             break
+#     # OIDC에서 jwks_uri만 비동기로 가져오기
+#     resp = await client.get(
+#         f"https://login.microsoftonline.com/{TENANT_ID}/v2.0/.well-known/openid-configuration",
+#         timeout=10,
+#     )
+#     resp.raise_for_status()
+#     jwks_uri = resp.json()["jwks_uri"]
 
-#     if not key:
-#         raise ValueError("JWK not found")
+#     jwk_client = PyJWKClient(jwks_uri)
+#     signing_key = await asyncio.to_thread(jwk_client.get_signing_key_from_jwt, token)
 
-#     claims = jwt.decode(
+#     claims = jwt_decode(
 #         token,
-#         key=key,
+#         key=signing_key.key, # PublicKey 타입으로 보장
 #         algorithms=["RS256"],
 #         audience=AAD_AUDIENCE,
 #         issuer=AAD_ISSUER,
@@ -208,57 +279,6 @@ def require_roles(allowed: list[str]):
 
     return deco
 
-# def require_roles(allowed: list[str]):
-#     allowed_set = set(allowed)
-
-#     def deco(fn):
-#         sig = inspect.signature(fn)  # ← 원본 시그니처 보관
-
-#         if asyncio.iscoroutinefunction(fn):
-#             @functools.wraps(fn)
-#             async def _async_wrapped(*args, **kwargs):
-#                 p = get_principal()
-#                 if p is None or not (set(p.roles) & allowed_set):
-#                     raise PermissionError("Forbidden by RBAC")
-#                 return await fn(*args, **kwargs)
-#             _async_wrapped.__signature__ = sig   # ← 시그니처 복원
-#             return _async_wrapped
-
-#         @functools.wraps(fn)
-#         def _sync_wrapped(*args, **kwargs):
-#             p = get_principal()
-#             if p is None or not (set(p.roles) & allowed_set):
-#                 raise PermissionError("Forbidden by RBAC")
-#             return fn(*args, **kwargs)
-#         _sync_wrapped.__signature__ = sig       # ← 시그니처 복원
-#         return _sync_wrapped
-
-#     return deco
-
-# def require_roles(allowed: list[str]):
-#     """요구 역할이 하나라도 일치해야 통과."""
-#     allowed_set = set(allowed)
-
-#     def deco(fn):
-
-#         @functools.wraps(fn)
-#         async def _async_wrapped(*args, **kwargs):
-#             p = get_principal()
-#             if p is None or not (set(p.roles) & allowed_set):
-#                 raise PermissionError("Forbidden by RBAC")
-#             return await fn(*args, **kwargs)
-
-#         @functools.wraps(fn)
-#         def _sync_wrapped(*args, **kwargs):
-#             p = get_principal()
-#             if p is None or not (set(p.roles) & allowed_set):
-#                 raise PermissionError("Forbidden by RBAC")
-#             return fn(*args, **kwargs)
-
-#         return _async_wrapped if asyncio.iscoroutinefunction(fn) else _sync_wrapped
-
-#     return deco
-
 # ----------------------------
 # FastMCP 서버 정의
 # ----------------------------
@@ -291,7 +311,7 @@ async def summarize(text: str, ctx: Context, documents: Optional[List[str]] | No
     # 데모: 매우 단순한 요약
     return text[:200] + ("..." if len(text) > 200 else "")
 
-# 데코레이터 순서 주의: 역할 검증을 먼저 적용하고, 그 다음 MCP에 등록
+# 데코레이터 순서: 역할 검증을 먼저 적용하고, 그 다음 MCP에 등록
 @require_roles(["admin"])
 @mcp.tool(title="Admin Echo")
 def admin_echo(message: str, ctx: Context) -> str:

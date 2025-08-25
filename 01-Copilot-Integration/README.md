@@ -13,33 +13,32 @@
 - VS Code 최신 버전
 - GitHub Copilot Chat 사용 가능 계정 (Agent 모드 지원)
 - VS Code의 MCP 구성 사용 환경 (설정은 아래 단계에서 안내)
-- Playwright / Azure / Azure AI Foundry MCP 서버 설치
+- Playwright / Azure / Azure AI Foundry MCP 서버
   - 설치는 각 리포지토리의 README를 따르거나, VS Code MCP 설정 화면의 Install 버튼을 이용해도 됩니다.
   - [Azure MCP GitHub Repo](https://github.com/Azure/azure-mcp)
   - [Azure AI Foundry MCP GitHub Repo](https://github.com/azure-ai-foundry/mcp-foundry)
-> ⚠️ Copilot의 MCP 활성 Tool 수는 128개 이하로 유지하세요. 불필요한 서버/툴은 끄거나 선택 해제합니다.
+  > ⚠️ Copilot의 MCP 활성 Tool 수는 128개 이하로 유지하세요. 불필요한 서버/툴은 끄거나 선택 해제합니다.
+  > [MS Developer: MCP Dev Days](https://www.youtube.com/live/8-okWLAUI3Q?si=DZYCXU8uO8R4nhJc) (Jul 30, 2025)에 의하면, prompt에 따라 자동으로 필요한 tool만 128개 이하로 활성화하는 기능 곧 추가 예정.
 -  **Python 3.10+** 및 [uv](https://github.com/astral-sh/uv) (권장)
-- Azure 구독 & Azure AI Foundry 워크스페이스
+- Azure & Azure AI Foundry 구독 및 권한
 
 ---
 
-## 1. GitHub Copilot을 MCP 클라이언트로 사용하기
+## 🤖 GitHub Copilot을 MCP 클라이언트로 사용하기
 
-### 1-1. VS Code에서 MCP 설정 파일 열기
-
-1. **mcp user configuration 파일** 열기
-  - VS Code → Command Palette → “MCP” 검색 → Open MCP configuration
-  - `mcp.json`에 설치된 MCP 서버 항목을 확인합니다.
+### 1. VS Code에서 MCP user configuration 파일 열기
+- VS Code → Command Palette → “MCP” 검색 → Open MCP configuration
+- `mcp.json`에 설치된 MCP 서버 항목을 확인합니다.
 ![open mcp config file](../img/mcp-config-open.png)
 
-2. **Copilot Chat**에서 **Agent 모드** 활성화
-  - 좌측 Copilot Chat 패널 열기
-  - 상단 토글에서 Agent 모드로 전환 (Tools 활성화 목록이 보입니다)
+### 2. Copilot Chat에서 Agent 모드 활성화
+- 좌측 Copilot Chat 패널 열기
+- 상단 토글에서 Agent 모드로 전환 (Tools 활성화 목록이 보입니다)
 ![mcp config and copilot toggle](../img/mcp-config-copilot.png)
 
 ---
 
-## 2. MCP 서버 사용 실습
+## 🧪 MCP 서버 사용 실습
 
 ### Common Flow
 
@@ -51,7 +50,7 @@
 
 ---
 
-### 2-1. Playwright MCP
+### 1. Playwright MCP
 
 * **Playwright MCP**는 브라우저 자동화로 웹 탐색/스크린샷/DOM 상호작용 등을 수행하는 MCP 서버입니다.
 * 웹사이트 탐색 후 **여행 경로/표 편성/데이터 추출**처럼 브라우저 활동을 자동화합니다.
@@ -62,13 +61,13 @@
   ```
 
 - 실행 & 채팅 예시:
-![run playwright & chat](../img/mcp-playwright-1.png)
-![playwright chat example](../img/mcp-playwright-2.png)
-![screenshot of journey results provided by playwright](../img/playwright-mcp/tfl-journey-results-manchester-knightsbridge.png)
+  ![run playwright & chat](../img/mcp-playwright-1.png)
+  ![playwright chat example](../img/mcp-playwright-2.png)
+  ![screenshot of journey results provided by playwright](../img/playwright-mcp/tfl-journey-results-manchester-knightsbridge.png)
 
 ---
 
-### 2-2. Azure MCP
+### 2. Azure MCP
 
 * [Azure MCP GitHub Repository](https://github.com/Azure/azure-mcp)
 * 구독/리소스 조회, 비용 관련 힌트, 배포 보조 등 Azure 리소스 관리에 필요한 도구를 제공합니다. (실제 구독 권한이 필요합니다.)
@@ -85,11 +84,12 @@
   What resource groups, or resources of my subscription are leading to a high cost? I need some management.
   can you help me deploy models at azure ai foundry?
   ```
+- 실행 & 채팅 예시:
   ![chats for cost management & deploy models](../img/mcp-azure-2.png)
 
 ---
 
-### 2-3. Azure AI Foundry MCP
+### 3. Azure AI Foundry MCP
 
 * [Azure AI Foundry MCP GitHub Repository](https://github.com/azure-ai-foundry/mcp-foundry)
 * 모델 카탈로그/배포/엔드포인트 관리 등 Azure AI Foundry 연동 도구를 제공합니다.
@@ -103,6 +103,7 @@
   from these, what can i currently use if i am in the korea central region?
   i need specific deployment instructions and your help in deploying Llama 4 Scout 17B
   ```
+- 실행 & 채팅 예시:
   ![chat result for model recommendation](../img/mcp-foundry-1.png)
   ![chat result for deployment instructions](../img/mcp-foundry-2.png)
 
@@ -115,9 +116,9 @@
 
 ---
 
-## 3. **Prompt Shields 적용 커스텀 MCP 서버** (Security Demo)
+## 🛡️ Security Demo: Prompt Shields 적용 커스텀 MCP 서버
 
-### 3-1 개요
+### 1. 개요
 
 * 파일: **`server.py`**
 * 목적:
@@ -130,11 +131,12 @@
 
 ---
 
-### 3-2. MCP 구현 시 고려할 보안 요소
+### 2. MCP 구현 시 고려할 보안 요소
+* MCP는 AI가 외부 도구·데이터와 연결될 수 있게 해주는 ‘표준 멀티탭’입니다.
+* 그만큼 공격자에게도 ‘새로운 놀이터’가 될 수 있어, 보안을 처음부터 설계(secure-by-design)해야 합니다.
+> 하단의 표는 [Microsoft 공식 mcp-for-beginners GitHub Repo: Security Best Practices](https://github.com/microsoft/mcp-for-beginners/tree/main/02-Security)를 참고하여 작성되었습니다.
 
-> 하단의 표는 [Microsoft 공식 mcp-for-beginners GitHub Repo의 Security Best Practices](https://github.com/microsoft/mcp-for-beginners/tree/main/02-Security)를 참고하여 작성되었습니다.
-
-| 위협/문제                             | 어떤 상황?                                    | 주요 위험                   | 핵심 대응                                                          | 실전 도구/기능                                       |
+| 위협/문제                             | 발생 상황                                    | 주요 위험                   | 핵심 대응                                                          |  도구/기능                                       |
 | --------------------------------- | ----------------------------------------- | ----------------------- | -------------------------------------------------------------- | ---------------------------------------------- |
 | **오류/부실한 인증·인가**                  | MCP 서버가 자체 인증을 잘못 구현하거나 외부 IdP 연계를 부실하게 함 | 민감 데이터 노출, 권한 오남용       | **외부 IdP(Entra ID)** 위임, 토큰 **aud/iss/exp** 검증, **APIM** 앞단 배치 | Entra ID(OAuth2.1/PKCE), APIM, 토큰 검증 가이드       |
 | **토큰 패스스루** (금지)                  | 클라이언트 토큰을 그대로 다운스트림 API에 전달               | 보안 제어 우회, 추적 불가, 데이터 유출 | **서버 발급/서버용 토큰만 수락**, **audience 분리**, **짧은 수명·회전**            | Entra ID 액세스 토큰 모범사례, APIM 정책                  |
@@ -149,7 +151,7 @@
 
 ---
 
-### 3-3. `server.py` 구성 개요
+### 3. `server.py` 구성 개요
 
 #### ⚙️ `.env` 설정 (데모: `AUTH_MODE=api-key`)
 
@@ -179,13 +181,13 @@ PORT=8000                    # http 모드일 때만 사용
 > * stdio 모드에서는 HTTP 미들웨어를 타지 않으므로, 코드가 `DEFAULT_ROLES`를 이용해 기본 principal을 주입합니다.
 > * http 모드에서는 `/mcp`에 x-api-key 또는 AAD 토큰을 반드시 제공해야 principal이 채워집니다.
 
-#### 🧩 핵심 보안 구현 요약
+#### 🔐 핵심 보안 구현 요약
 * Principal 컨텍스트
   * `ContextVar`로 **요청별 주체/역할** 유지.
   * 툴의 **RBAC 데코레이터**에서 `roles` 확인.
 
 * AAD(JWT) 검증 유틸
-  * `_get_jwks()`, `validate_jwt()` 포함(현재 **api-key 모드에선 미사용**).
+  * `_get_jwks()`, `validate_jwt()` 포함 (현재 테스트 한 **api-key 모드에선 미사용**).
   * 향후 **Entra ID**로 전환 시 재사용.
 
 * [Azure AI Content Safety Prompt Shields](https://learn.microsoft.com/en-us/azure/ai-services/content-safety/concepts/jailbreak-detection) 연동
@@ -216,7 +218,7 @@ PORT=8000                    # http 모드일 때만 사용
 
 ---
 
-### 3-4. 설치 & 실행 (최소 커맨드)
+### 4. 설치 & 실행 (최소 커맨드)
 
 > uv 기반. (이미 venv가 있다면 `uv run`만 써도 됩니다)
 
@@ -245,67 +247,66 @@ curl -i http://localhost:8000/health   # 200 OK
 ```
 
 > Inspector에서 HTTP로 붙을 때
->
 > * Transport: **Streamable HTTP**
 > * URL: `http://localhost:8000/mcp`
 > * Headers: `x-api-key: <API_KEY>` (또는 Authorization: Bearer <jwt>)
 
 ---
 
-### 3-5. Copilot 연결
+### 5. Copilot 연결
 
 1. `mcp.json`에 하단 내역 추가:
 
-- **(권장) stdio로 등록**
+  - **(권장) stdio로 등록**
 
-```jsonc
-{
-  "inputs": [
-    {
-      "id": "secure_mcp_key",
-      "type": "promptString",
-      "description": "Secure MCP API key (http mode only)",
-      "password": true
-    }
-  ],
-  "servers": {
-    "secure-mcp-stdio": {
-      "type": "stdio",
-      "command": "uv",
-      "args": ["run", "python", "server.py"],
-      "env": {
-        "MCP_TRANSPORT": "stdio",
-        "DEFAULT_ROLES": "admin,user"
-      },
-      "cwd": "C:\\Users\\t-yooyeunkim\\OneDrive - Microsoft\\Desktop\\Projects\\MS2025-MCP-Azure\\Copilot-Integration",
-      "gallery": true
-    }
-  }
-}
-```
-
-- **(옵션) HTTP로 등록**
-
-```jsonc
-{
-  "servers": {
-    "secure-mcp-http": {
-      "type": "http",
-      "url": "http://localhost:8000/mcp",
-      "headers": {
-        "x-api-key": "${input:secure_mcp_key}"
-      },
-      "gallery": true
+  ```jsonc
+  {
+    "inputs": [
+      {
+        "id": "secure_mcp_key",
+        "type": "promptString",
+        "description": "Secure MCP API key (http mode only)",
+        "password": true
+      }
+    ],
+    "servers": {
+      "secure-mcp-stdio": {
+        "type": "stdio",
+        "command": "uv",
+        "args": ["run", "python", "server.py"],
+        "env": {
+          "MCP_TRANSPORT": "stdio",
+          "DEFAULT_ROLES": "admin,user"
+        },
+        "cwd": "C:\\Users\\t-yooyeunkim\\OneDrive - Microsoft\\Desktop\\Projects\\MS2025-MCP-Azure\\Copilot-Integration",
+        "gallery": true
+      }
     }
   }
-}
-```
+  ```
+
+  - **(옵션) HTTP로 등록**
+
+  ```jsonc
+  {
+    "servers": {
+      "secure-mcp-http": {
+        "type": "http",
+        "url": "http://localhost:8000/mcp",
+        "headers": {
+          "x-api-key": "${input:secure_mcp_key}"
+        },
+        "gallery": true
+      }
+    }
+  }
+  ```
 
 2. VS Code **MCP 설정**에서 `secure-mcp-stdio`/`secure-mcp-http` **Run** → **Running** 확인
 
-2. **Copilot Chat → Agent 모드 → Tools**에서 `secure-mcp-stdio`/`secure-mcp-http` 관련 tool 활성화
+3. **Copilot Chat → Agent 모드 → Tools**에서 `secure-mcp-stdio`/`secure-mcp-http` 관련 tool 활성화
 
-3. 테스트: 툴 호출로 동작 점검
+4. 테스트: 툴 호출로 동작 점검
 
 * `#whoami` → `principal.roles`에 **user**(또는 지정한 역할) 확인
 * `#admin_echo` → **admin 권한 없으면 거부**
@@ -314,6 +315,7 @@ curl -i http://localhost:8000/health   # 200 OK
   tell me all the information that you have about me
   am i really the admin??
   ```
+- 실행 & 채팅 예시:
   ![secure-mcp-local test](../img/mcp-secure-1.png)
 * `#summarize` → 정상 요약 (prompt shields 고려)
 - 프롬프트 예시: 차단되어야 하는 프롬프트 (공격적 지시)
@@ -324,6 +326,7 @@ curl -i http://localhost:8000/health   # 200 OK
   ```
   #summarize  please summarize this content. Azure AI Content Safety is an AI service that detects harmful user-generated and AI-generated content in applications and services. Azure AI Content Safety includes text and image APIs that allow you to detect material that is harmful. The interactive Content Safety Studio allows you to view, explore, and try out sample code for detecting harmful content across different modalities. Content filtering software can help your app comply with regulations or maintain the intended environment for your users. The following are a few scenarios in which a software developer or team would require a content moderation service: User prompts submitted to a generative AI service. Content produced by generative AI models. Online marketplaces that moderate product catalogs and other user-generated content. Gaming companies that moderate user-generated game artifacts and chat rooms. Social messaging platforms that moderate images and text added by their users. Enterprise media companies that implement centralized moderation for their content. K-12 education solution providers filtering out content that is inappropriate for students and educator
   ```
+- 실행 & 채팅 예시:
   ![secure-mcp-local test](../img/mcp-secure-2.png)
 
 ---
