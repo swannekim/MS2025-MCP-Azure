@@ -283,45 +283,42 @@ title: MCP on Azure - Reference Map
 ---
 flowchart LR
   %% --- Nodes ---
-  subgraph Client_Host [Client & Host]
-    VS[VS Code / Copilot (Host)]
-    Agent[Azure AI Foundry Agent (Host)]
-    Cli[MCP Client (per-server connector)]
-    VS --> Cli
-    Agent --> Cli
+  subgraph Client_Host [Client and Host]
+    VS[VS Code / Copilot / IDE Host];
+    Agent[Azure AI Foundry Agent];
   end
-
-  subgraph Azure_Data_AI [Azure Data & AI]
-    AKS[AKS or Container Apps (MCP Server)]
-    AISearch[Azure AI Search]
-    Storage[Azure Storage Blob]
-    Cosmos[Azure Cosmos DB]
+ 
+  subgraph Azure_Data_AI [Azure Data and AI]
+    AISearch[Azure AI Search];
+    Storage[Azure Storage Blob];
+    Cosmos[Azure Cosmos DB];
+    AKS[AKS or Container Apps];
   end
-
-  subgraph SecOps [Security & Operations]
-    APIM[API Management Gateway]
-    MI[Managed Identity]
-    KV[Key Vault]
-    CAS[Azure AI Content Safety]
-    Mon[Azure Monitor / Log Analytics]
+ 
+  subgraph SecOps [Security and Operations]
+    APIM[API Management Gateway];
+    MI[Managed Identity];
+    KV[Key Vault];
+    CAS[Azure AI Content Safety];
+    Mon[Azure Monitor and Log Analytics];
   end
-
-  %% --- Edges (Transport / Calls) ---
-  Cli -->|MCP (JSON-RPC over HTTP/SSE)| APIM
-  APIM -->|HTTP (proxy to backend)| AKS
-
-  AKS -->|SDK/REST| AISearch
-  AKS -->|SDK/REST| Storage
-  AKS -->|SDK/REST| Cosmos
-
-  %% --- Security / Observability ---
-  APIM -.->|uses MI to fetch secrets| KV
-  AKS -.->|workload identity| MI
-  MI -.->|secrets/keys| KV
-
-  VS -.->|prompt/output scanning| CAS
-  Agent -.->|prompt/output scanning| CAS
-  AKS -.->|logs/metrics| Mon
+ 
+  %% --- Edges ---
+  VS -->|MCP| APIM;
+  Agent -->|MCP| APIM;
+  APIM --> AKS;
+ 
+  AKS -->|MCP Server| AISearch;
+  AKS -->|MCP Server| Storage;
+  AKS -->|MCP Server| Cosmos;
+ 
+  APIM --- MI;
+  AKS --- MI;
+  MI --- KV;
+ 
+  VS -.-> CAS;
+  Agent -.-> CAS;
+  AKS -.-> Mon;
 ```
 
 * **Host/Client**: VS Code(확장), Copilot Agent Mode, Azure AI Foundry Agent
